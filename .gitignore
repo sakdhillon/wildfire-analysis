@@ -3,3 +3,7 @@
 /ghcn-subset
 
 /artifacts
+
+.DS_Store
+
+/output

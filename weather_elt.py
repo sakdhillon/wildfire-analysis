@@ -29,13 +29,23 @@ def main(in_directory, out_directory):
     weather = weather.withColumn("month", functions.month("date"))
     weather = weather.drop('date')
     
-    # combine data via year and month - average temp and average percp
-    group = weather.groupBy('station', 'year', 'month', 'observation')
+    weather = weather.withColumn('lat_floor', functions.floor('latitude'))
+    weather = weather.withColumn('long_floor', functions.floor('longitude'))
+    
+    weather = weather.drop('latitude', 'longitude','station')
+    
+    weather.show()
+    
+    # combine data via year and month and location - average temp and average percp 
+    group = weather.groupBy('lat_floor', 'long_floor', 'year', 'month', 'observation')
     weather_grouped = group.agg(functions.avg(weather['value']).alias('average_val'))
 
-    # weather_grouped.show()
+    weather_grouped.show()
+    num_rows = weather_grouped.count()
+    
+    print(num_rows)
 
-    weather_grouped.write.json(out_directory, compression='gzip', mode='overwrite')
+    weather_grouped.write.json(out_directory, compression='gzip', mode='overwrite') ## write to one file
     
     
 
