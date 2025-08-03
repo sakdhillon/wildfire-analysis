@@ -48,7 +48,7 @@ def main():
 
     ## Filter as we like...
     # keep only some years
-    obs = obs.filter((obs['year'] >= 1990) & (obs['year'] <= 2025))
+    obs = obs.filter((obs['year'] >= 1990) & (obs['year'] <= 2024))
     
     obs = obs.filter(functions.isnull(obs['qflag']))
     obs = obs.drop(obs['mflag']).drop(obs['qflag']).drop(obs['sflag']).drop(obs['obstime'])
@@ -57,7 +57,7 @@ def main():
 
     # parse the date string into a real date object
     obs = obs.withColumn('newdate', functions.to_date(obs['date'], 'yyyyMMdd'))
-    obs = obs.drop('date').withColumnRenamed('newdate', 'date')   
+    # obs = obs.drop('date').withColumnRenamed('newdate', 'date')   
     
     # optional, if you want the station locations joined in...
     obs = obs.join(stations, on='station')
