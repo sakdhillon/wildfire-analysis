@@ -16,11 +16,12 @@ from sklearn.ensemble import RandomForestClassifier
 def main():
     
     filename1 = sys.argv[1]
-    # filename2 = sys.argv[2]
-    # filename3 = sys.argv[3]
+    filename2 = sys.argv[2]
+    filename3 = sys.argv[3]
     
     wildfires = pd.read_csv(filename1, sep=',', header=0, index_col = None, parse_dates=['REP_DATE'])
-    # fire_nums = pd.read_csv(filename2, sep=' ', header=0, index_col=2)    
+    weather = pd.read_parquet(filename2)
+    fire_nums = pd.read_csv(filename3, sep=' ', header=0, index_col=2)    
     
     ## clean the canada_wildfire csv - get month and year - combine based on that  - lat and long floor 
     # toDrop = wildfires['FID']
@@ -41,6 +42,8 @@ def main():
     wildfires = wildfires.drop(['LATITUDE', 'LONGITUDE'], axis=1)
     
     print(wildfires)
+    
+    ## make a map with the lat and long - shows where the fires are over years - different colours per year 
  
     ## change total wildfires monthly to have numbers for month instead of name and province into short form
     

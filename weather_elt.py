@@ -1,3 +1,5 @@
+## test file - to test locally 
+
 import sys
 from pyspark.sql import SparkSession, functions, types
 
@@ -37,15 +39,18 @@ def main(in_directory, out_directory):
     weather.show()
     
     # combine data via year and month and location - average temp and average percp 
-    group = weather.groupBy('lat_floor', 'long_floor', 'year', 'month', 'observation')
-    weather_grouped = group.agg(functions.avg(weather['value']).alias('average_val'))
+    group = weather.groupBy('lat_floor', 'long_floor', 'year', 'month')
+    weather_grouped = group.agg(
+        functions.avg(functions.when(weather['observation'] == 'TMAX', weather['value'])).alias('tmax_avg'), 
+        functions.sum(functions.when(weather['observation'] == 'PRCP', weather['value'])).alias('precp_sum'), 
+        )
 
     weather_grouped.show()
     num_rows = weather_grouped.count()
     
     print(num_rows)
 
-    weather_grouped.write.json(out_directory, compression='gzip', mode='overwrite') ## write to one file
+    # weather_grouped.write.json(out_directory, compression='gzip', mode='overwrite') ## write to one file
     
     
 
