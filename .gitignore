@@ -1,15 +1,5 @@
 
 ## weather data before cleaning 
-/ghcn-subset
-/ghcn-subset1
-/ghcn-TMAX
-/ghcn-PRCP
-/ghcn-sub1
-
-/weather
-
+/test_data
 /artifacts
-
 .DS_Store
-
-/output
