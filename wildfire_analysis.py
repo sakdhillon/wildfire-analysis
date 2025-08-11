@@ -13,235 +13,38 @@ from sklearn.naive_bayes import GaussianNB
 
 import skimage
 import matplotlib.pyplot as plt
+import seaborn as sns
 
 
-def main():
-    
-    input_directory = pathlib.Path(sys.argv[1])
-    # output_directory = pathlib.Path(sys.argv[2])
-    
-    wildfires = pd.read_csv(input_directory / 'wildfire.csv', sep=',', header=0, index_col = None, parse_dates=['REP_DATE'])
-    weather = pd.read_parquet(input_directory / 'weather-sub/weather.parquet') ## for some reason doesn't print all the numbers 
-    fire_nums = pd.read_csv(input_directory / 'Total_Wildfires_Monthly.csv', sep='\t', skiprows=1, header=0, encoding='utf-16')  
-    fire_causes = pd.read_csv(input_directory / 'Wildfire_Causes.csv', sep='\t', skiprows=1, header=0, encoding='utf-16')  
-      
-    ## WILDFIRES 
-    ## clean the canada_wildfire csv - get month and year - combine based on that 
-    
-    wildfires = wildfires.rename(columns={'SRC_AGENCY': 'prov'})
-    
-    wildfires['year'] = wildfires['REP_DATE'].dt.year
-    wildfires['month'] = wildfires['REP_DATE'].dt.month
-    
-    wildfires = wildfires.drop(['FID', 'REP_DATE', 'PROTZONE'], axis=1)
-    
-    print(wildfires)
-    
-    wildfires = wildfires.astype({'LATITUDE': 'float', 'LONGITUDE': 'float', 'SIZE_HA': 'float'})
-    
-    wildfires['lat'] = np.floor(wildfires['LATITUDE'])
-    wildfires['long'] = np.floor(wildfires['LONGITUDE'])
-    
-    wildfires = wildfires.drop(['LATITUDE', 'LONGITUDE'], axis=1)
-    
-    parks_map = {
-        'BC': 'BC',
-        'AB': 'AB',
-        'SK': 'SK',
-        'MB': 'MB',
-        'ON': 'ON',
-        'QC': 'QC',
-        'NS': 'NS',
-        'NB': 'NB',
-        'NL': 'NL',
-        'NWT': 'NWT',
-        'YT': 'YT',
-        'PC-BA': 'AB',
-        'PC-BP': 'ON',
-        'PC-BT': 'SK',
-        'PC-CB': 'NS',
-        'PC-CH': 'SK',
-        'PC-CT': 'BC',
-        'PC-EI': 'AB',
-        'PC-FO': 'QC',
-        'PC-FR': 'BC',
-        'PC-FU': 'NB',
-        'PC-FW': 'SK',
-        'PC-GB': 'ON',
-        'PC-GF': 'BC',
-        'PC-GH': 'BC',
-        'PC-GI': 'QC',
-        'PC-GL': 'BC',
-        'PC-GM': 'NL',
-        'PC-GR': 'SK',
-        'PC-JA': 'AB',
-        'PC-KE': 'NS',
-        'PC-KG': 'NB',
-        'PC-KL': 'YT',
-        'PC-KO': 'BC',
-        'PC-LL': 'AB',
-        'PC-LM': 'QC',
-        'PC-LO': 'NS',
-        'PC-MI': 'QC',
-        'PC-NA': 'NWT',
-        'PC-PA': 'SK',
-        'PC-PE': 'PEI',
-        'PC-PP': 'ON',
-        'PC-PR': 'BC',
-        'PC-PU': 'ON',
-        'PC-RE': 'BC',
-        'PC-RM': 'MB',
-        'PC-RO': 'AB',
-        'PC-SL': 'ON',
-        'PC-SY': 'NWT',
-        'PC-TI': 'ON',
-        'PC-TN': 'NL',
-        'PC-VU': 'YT',
-        'PC-WB': 'AB',
-        'PC-WL': 'AB',
-        'PC-WP': 'MB',
-        'PC-YO': 'BC'
-    }
-    
-    wildfires['prov'] = wildfires['prov'].map(parks_map)
-    
-    print(wildfires)
-    
-    ## FIRE NUMS
-    ## change the years to be ints and not floats
-    ## jurisdiction to be the short form 
-    ## months to be numbered???
-    
-    prov_map = {
-        'British Columbia': 'BC',
-        'Alberta': 'AB',
-        'Saskatchewan': 'SK',
-        'Manitoba': 'MB',
-        'Ontario': 'ON',
-        'Quebec': 'QC',
-        'Nova Scotia': 'NS',
-        'New Brunswick': 'NB',
-        'Newfoundland and Labrador': 'NL',
-        'Northwest Territories': 'NWT',
-        'Yukon': 'YT',
-        'Prince Edward Island': 'PEI'
-    }
-    
-    month_map = {
-        'January' : 1,
-        'February': 2,
-        'March': 3,
-        'April': 4,
-        'May': 5,
-        'June': 6,
-        'July': 7,
-        'August': 8,
-        'September': 9,
-        'October': 10,
-        'November': 11,
-        'December': 12,
-    }
-    
-    # https://www.latlong.net/category/provinces-40-60.html
-    
-    lat_map = {
-        'BC': 53.726669,
-        'AB': 55.000000,
-        'SK': 55.000000,
-        'MB': 56.415211,
-        'ON': 50.000000,
-        'QC': 53.000000,
-        'NS': 45.000000,
-        'NB': 46.498390,
-        'NL': 53.135509,
-        'NWT': 64.8255,
-        'YT': 64.2823,
-        'PEI': 46.250000
-    }
-    
-    long_map = {
-        'BC': -127.647621,
-        'AB': -115.000000,
-        'SK': -106.000000,
-        'MB': -98.739075,
-        'ON': -85.000000,
-        'QC': -70.000000,
-        'NS': -63.000000,
-        'NB': -66.159668,
-        'NL': -57.660435,
-        'NWT': -124.8457,
-        'YT': -135.0000,
-        'PEI': -63.000000
-    }
-    
-    
-    fire_nums = fire_nums.rename(columns={'Jurisdiction': 'prov'})
-    fire_nums = fire_nums.rename(columns={'Month': 'month'})
 
-    fire_nums = fire_nums.drop(['Data Qualifier'], axis=1)
-    fire_nums['prov'] = fire_nums['prov'].map(prov_map)
-    fire_nums['month'] = fire_nums['month'].map(month_map)
-    fire_nums['lat'] = fire_nums['prov'].map(lat_map)
-    fire_nums['long'] = fire_nums['prov'].map(long_map)
-    fire_nums['month'] = fire_nums['month'].astype('Int64')
-    
-    fire_nums = fire_nums.fillna(0)
-    
-    # print(fire_nums)
-    
-    fire_nums = pd.melt(fire_nums, id_vars=['prov', 'month', 'lat', 'long'], var_name='year', value_name='fire_num')
-    
-    print(fire_nums)
-    
-    
-    
-    ## FIRE CAUSES
-    ## change the years to be ints and not floats
-    ## jurisdiction to be the short form
-    
-    cause_map = {
-        'Human activity' : 'H',
-        'Lightning' : 'L',
-        'Natural cause' : 'N',
-        'Prescribed burn' : 'PB',
-        'Reburn' : 'R',
-        'Unspecified' : 'U'
-    }
-    
-    fire_causes = fire_causes.rename(columns={'Jurisdiction': 'prov'})
-    fire_causes = fire_causes.drop(['Data Qualifier'], axis=1)
-    fire_causes['prov'] = fire_causes['prov'].map(prov_map)
-    fire_causes['Cause'] = fire_causes['Cause'].map(cause_map)
-    fire_causes['lat'] = fire_causes['prov'].map(lat_map)
-    fire_causes['long'] = fire_causes['prov'].map(long_map)
-    fire_causes = fire_causes.fillna(0)
-    
-    # print(fire_causes)
-    
-    fire_causes = pd.melt(fire_causes, id_vars=['prov', 'Cause', 'lat', 'long'], var_name='year', value_name='fire_num')
 
-    # View the result
-    print(fire_causes)
-    
-    # weather = weather.drop(['Data Qualifier'], axis=1)
-    print (weather)
-    
-    
-    
-    
-    # use euclidean distance to figure out which province the station is in
-    # the merge fire nums and fire causes to the weather based on year month prov - or just year month accordingly 
-    
-    ## merge weather with the wildfire data based on nearest location, month, year - adding tmax and precp to the larger dataframe
-    
-    
-    ## when merging weather with fire causes - do average t max of the province for the month - and average precp_sum 
-    
+def main ():
     
     ## plots and stats:
     ## scatter plot for max average and fire count and total percep and fire count 
     ## heat map 
     ## fire counts per year 
+    
+    data = pd.read_csv('out.csv',sep=',', header=0, index_col = None) ## always rename if cleaning
+    
+    scatter_data = data.dropna(subset=['t_max', 'precp'])
+
+    grouped = scatter_data.groupby(['year', 'month', 't_max', 'precp']).size().reset_index(name='fire_count')
+
+    plt.figure()
+    
+
+    plt.xlabel('Average Maximum Temperature (t_max)')
+    plt.ylabel('Total Precipitation (precp)')
+    plt.title('Number of Fires by Temperature, Precipitation, Month and Year')
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+    
+
+    
     
     
     ## mannwhitney u test 
@@ -259,7 +62,6 @@ def main():
     
     
     ## how to analysis????
-    
     
     return 
 
