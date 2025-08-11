@@ -26,7 +26,7 @@ def main():
     fire_causes = pd.read_csv(input_directory / 'Wildfire_Causes.csv', sep='\t', skiprows=1, header=0, encoding='utf-16')  
       
     ## WILDFIRES 
-    ## clean the canada_wildfire csv - get month and year - combine based on that  - lat and long floor 
+    ## clean the canada_wildfire csv - get month and year - combine based on that 
     
     wildfires = wildfires.rename(columns={'SRC_AGENCY': 'prov'})
     
@@ -141,17 +141,56 @@ def main():
         'November': 11,
         'December': 12,
     }
+    
+    # https://www.latlong.net/category/provinces-40-60.html
+    
+    lat_map = {
+        'BC': 53.726669,
+        'AB': 55.000000,
+        'SK': 55.000000,
+        'MB': 56.415211,
+        'ON': 50.000000,
+        'QC': 53.000000,
+        'NS': 45.000000,
+        'NB': 46.498390,
+        'NL': 53.135509,
+        'NWT': 64.8255,
+        'YT': 64.2823,
+        'PEI': 46.250000
+    }
+    
+    long_map = {
+        'BC': -127.647621,
+        'AB': -115.000000,
+        'SK': -106.000000,
+        'MB': -98.739075,
+        'ON': -85.000000,
+        'QC': -70.000000,
+        'NS': -63.000000,
+        'NB': -66.159668,
+        'NL': -57.660435,
+        'NWT': -124.8457,
+        'YT': -135.0000,
+        'PEI': -63.000000
+    }
+    
+    
     fire_nums = fire_nums.rename(columns={'Jurisdiction': 'prov'})
     fire_nums = fire_nums.rename(columns={'Month': 'month'})
 
     fire_nums = fire_nums.drop(['Data Qualifier'], axis=1)
     fire_nums['prov'] = fire_nums['prov'].map(prov_map)
     fire_nums['month'] = fire_nums['month'].map(month_map)
+    fire_nums['lat'] = fire_nums['prov'].map(lat_map)
+    fire_nums['long'] = fire_nums['prov'].map(long_map)
     fire_nums['month'] = fire_nums['month'].astype('Int64')
     
     fire_nums = fire_nums.fillna(0)
     
     print(fire_nums)
+    
+    
+    
     
     
     ## FIRE CAUSES
@@ -171,6 +210,8 @@ def main():
     fire_causes = fire_causes.drop(['Data Qualifier'], axis=1)
     fire_causes['prov'] = fire_causes['prov'].map(prov_map)
     fire_causes['Cause'] = fire_causes['Cause'].map(cause_map)
+    fire_causes['lat'] = fire_causes['prov'].map(lat_map)
+    fire_causes['long'] = fire_causes['prov'].map(long_map)
     fire_causes = fire_causes.fillna(0)
     
     print(fire_causes)
@@ -178,6 +219,25 @@ def main():
     
     # weather = weather.drop(['Data Qualifier'], axis=1)
     print (weather)
+    
+    ## plots and stats:
+    ## scatter plot for max average and fire count and total percep and fire count 
+    ## heat map 
+    ## fire counts per year 
+    
+    
+    ## mannwhitney u test 
+    
+    ## check if t test is possible?
+    
+    ## chi test 
+    
+    
+    ## merge the data sets:
+    
+    # can merge the fire_nums and weather by year and location and fire causes and weather by year and location 
+    
+    
     
     ## make a map with the lat and long - shows where the fires are over years - different colours per year 
  
