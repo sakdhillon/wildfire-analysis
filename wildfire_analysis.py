@@ -187,9 +187,11 @@ def main():
     
     fire_nums = fire_nums.fillna(0)
     
+    # print(fire_nums)
+    
+    fire_nums = pd.melt(fire_nums, id_vars=['prov', 'month', 'lat', 'long'], var_name='year', value_name='fire_num')
+    
     print(fire_nums)
-    
-    
     
     
     
@@ -214,11 +216,27 @@ def main():
     fire_causes['long'] = fire_causes['prov'].map(long_map)
     fire_causes = fire_causes.fillna(0)
     
-    print(fire_causes)
+    # print(fire_causes)
     
+    fire_causes = pd.melt(fire_causes, id_vars=['prov', 'Cause', 'lat', 'long'], var_name='year', value_name='fire_num')
+
+    # View the result
+    print(fire_causes)
     
     # weather = weather.drop(['Data Qualifier'], axis=1)
     print (weather)
+    
+    
+    
+    
+    # use euclidean distance to figure out which province the station is in
+    # the merge fire nums and fire causes to the weather based on year month prov - or just year month accordingly 
+    
+    ## merge weather with the wildfire data based on nearest location, month, year - adding tmax and precp to the larger dataframe
+    
+    
+    ## when merging weather with fire causes - do average t max of the province for the month - and average precp_sum 
+    
     
     ## plots and stats:
     ## scatter plot for max average and fire count and total percep and fire count 
@@ -231,12 +249,6 @@ def main():
     ## check if t test is possible?
     
     ## chi test 
-    
-    
-    ## merge the data sets:
-    
-    # can merge the fire_nums and weather by year and location and fire causes and weather by year and location 
-    
     
     
     ## make a map with the lat and long - shows where the fires are over years - different colours per year 
