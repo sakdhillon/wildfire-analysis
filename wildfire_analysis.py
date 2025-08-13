@@ -4,12 +4,17 @@ import sys
 import numpy as np
 import pandas as pd
 
+
+from scipy import stats
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import FunctionTransformer
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
-from sklearn.naive_bayes import GaussianNB
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.metrics import classification_report
 
 import skimage
 import matplotlib.pyplot as plt
@@ -17,55 +22,140 @@ import seaborn as sns
 
 
 
-
 def main ():
-    
-    ## plots and stats:
-    ## scatter plot for max average and fire count and total percep and fire count 
-    ## heat map 
-    ## fire counts per year 
-    
-    data = pd.read_csv('out.csv',sep=',', header=0, index_col = None) ## always rename if cleaning
-    
-    scatter_data = data.dropna(subset=['t_max', 'precp'])
 
-    grouped = scatter_data.groupby(['year', 'month', 't_max', 'precp']).size().reset_index(name='fire_count')
-
-    plt.figure()
+    data = pd.read_csv('out.csv',sep=',', header=0, index_col = None) ## always rename if cleaning    
+    print(data)
     
+    scatter_data = data.dropna(subset=['t_max', 'precp', 'ECOZ_NAME'])
+    counts = scatter_data.groupby(['year', 'month', 't_max', 'precp']).size().reset_index(name='fire_count')
+    
+    print(counts)
 
-    plt.xlabel('Average Maximum Temperature (t_max)')
-    plt.ylabel('Total Precipitation (precp)')
-    plt.title('Number of Fires by Temperature, Precipitation, Month and Year')
-    plt.grid(True)
-    plt.tight_layout()
+    
+    # for year in sorted(counts['year'].unique()):
+    #     data_year = counts[counts['year'] == year]
+        
+    #     plt.figure(figsize=(6, 5)) 
+    #     sns.scatterplot(
+    #         x='t_max',
+    #         y='precp',
+    #         data=data_year,
+    #         hue='month',
+    #         size='fire_count',
+    #         palette='viridis',
+    #         sizes=(20, 250),
+    #         legend=True
+    #     )
+
+    #     plt.xlabel('Average Maximum Temperature (t_max)')
+    #     plt.ylabel('Total Precipitation (precp)')
+    #     plt.title(f'Wildfires per {year} by Temp, Precipitation & Month')
+    #     plt.tight_layout()
+    #     # plt.show()
+        
+    
+    ### STATS OF HOW TMAX AND PRECP AFFECT FIRE SIZE 
+    # QUESTION: Does the average tmax per month and sum of precp indicate fire size
+
+    sns.scatterplot(x=scatter_data['t_max'], y=scatter_data['SIZE_HA'])
+    plt.show()
+    
+    sns.scatterplot(x=scatter_data['precp'], y=scatter_data['SIZE_HA'])
+    plt.show()
+    
+    pearson_corr = scatter_data[['t_max', 'precp', 'SIZE_HA']].corr(method='pearson')
+    print("Pearson correlation:\n", pearson_corr)
+    sns.heatmap(pearson_corr, annot=True, cmap='coolwarm')
     plt.show()
 
+    # Spearman correlation
+    spearman_corr = scatter_data[['t_max', 'precp', 'SIZE_HA']].corr(method='spearman')
+    print("\nSpearman correlation:\n", spearman_corr)
+    sns.heatmap(spearman_corr, annot=True, cmap='coolwarm')
+    plt.show()
+        
 
+    ### STATS OF HOW TMAX AND PRECP AFFECT THE AMOUNT OF FIRES 
+    ## chi squared
+    # https://pandas.pydata.org/docs/user_guide/categorical.html - to split into cateogries so we can see what the chi squared says 
     
+    labels = ['Low', 'Medium', 'High']
+    
+    counts['tmax_bins'] = pd.cut(counts['t_max'], bins=3, labels=labels)
+    counts['precp_bins'] = pd.cut(counts['precp'], bins=3, labels=labels)
 
+    contingency = pd.crosstab(counts['tmax_bins'], counts['precp_bins'])
+
+    chi = stats.chi2_contingency(contingency)
+    print(f"p = {chi.pvalue}")
+    
+    ### FOR THE LAT AND LONG AND THE ECOZ_NAME PREDICT THE NUMBER OF FIRES PER MONTH IN THAT AREA
+    
+    location_counts = scatter_data.groupby(['year', 'month', 't_max', 'precp', 'ECOZ_NAME', 'lat', 'long']).size().reset_index(name='fire_count')
+    location_counts = location_counts.sort_values(by='ECOZ_NAME')
+    
+    features = ['year', 't_max', 'precp', 'lat', 'long', 'month']
+    X = location_counts[features]
+    y = location_counts['fire_count']
+    
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = RandomForestRegressor(450, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_valid)
+    
+    print(model.score(X_valid, y_valid))
     
     
     
-    ## mannwhitney u test 
-    
-    ## check if t test is possible?
-    
-    ## chi test 
+    ### FOR THE LAT AND LONG AND THE ECOZ_NAME PREDICT THE HECTARE BURNED PER YEAR
     
     
-    ## make a map with the lat and long - shows where the fires are over years - different colours per year 
- 
-    ## change total wildfires monthly to have numbers for month instead of name and province into short form
+    location_counts = scatter_data.groupby(['year', 'month', 't_max', 'precp', 'ECOZ_NAME', 'lat', 'long', 'SIZE_HA']).size().reset_index(name='fire_count')
+    location_counts = location_counts.sort_values(by='ECOZ_NAME')
     
-    ## join on year month province or location? - canada wildfire and weather 
+    features = ['year', 't_max', 'precp', 'lat', 'long', 'month', 'fire_count']
+    X = location_counts[features]
+    y = location_counts['SIZE_HA']
+    
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = RandomForestRegressor(450, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_valid)
+    
+    print(model.score(X_valid, y_valid))
     
     
-    ## how to analysis????
+    ### FOR THE LAT AND LONG AND THE ECOZ_NAME PREDICT THE HECTARE CATEGORY
+    
+    location_counts = scatter_data.groupby(['year', 'month', 't_max', 'precp', 'ECOZ_NAME', 'lat', 'long', 'SIZE_HA']).size().reset_index(name='fire_count')
+    location_counts = location_counts.sort_values(by='ECOZ_NAME')
+    
+    labels = ['Small', 'Medium', 'Large']
+    
+    # https://stackoverflow.com/questions/67434627/how-can-i-split-my-data-in-pandas-into-specified-buckets-e-g-40-40-20
+    location_counts['hectare_size'] = pd.qcut(location_counts['SIZE_HA'], q=3, labels=labels)
+    
+    features = ['year', 't_max', 'precp', 'lat', 'long', 'month']
+    X = location_counts[features]
+    y = location_counts['hectare_size']
+    
+    X_train, X_valid, y_train, y_valid = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    model = RandomForestClassifier(450, random_state=42)
+    model.fit(X_train, y_train)
+
+    y_pred = model.predict(X_valid)
+    
+    print(model.score(X_valid, y_valid))
+    print(classification_report(y_valid, y_pred))
     
     return 
 
 
 if __name__ == '__main__':
     main()
-

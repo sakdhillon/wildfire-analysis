@@ -3,3 +3,8 @@
 /test_data
 /artifacts
 .DS_Store
+
+wildfires.py
+
+test.csv
+location_counts.csv
