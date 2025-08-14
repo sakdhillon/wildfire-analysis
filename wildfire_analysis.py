@@ -15,7 +15,6 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.neighbors import KNeighborsRegressor
 from sklearn.metrics import classification_report
 
-import skimage
 import matplotlib.pyplot as plt
 import seaborn as sns
 
