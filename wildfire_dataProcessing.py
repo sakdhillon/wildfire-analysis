@@ -14,8 +14,8 @@ from sklearn.naive_bayes import GaussianNB
 import skimage
 import matplotlib.pyplot as plt
 
-## TODO: clean code 
 
+## middle of province locations
 def prov_location(data):
     # https://www.latlong.net/category/provinces-40-60.html
     
@@ -55,9 +55,11 @@ def prov_location(data):
     return data 
 
 
+## checking the closest distance for station and fire to get the corret weather values 
 # https://stackoverflow.com/questions/27928/calculate-distance-between-two-latitude-longitude-points-haversine-formula/21623206
 def distance(fires, weather):
     
+    ### check by year and month so we don't match random ones 
     stations = weather[(weather['year'] == fires['year']) & (weather['month'] == fires['month']) & (weather['tmax_avg'].notna()) & (weather['precp_sum'].notna())]
     
     lat1 = fires['lat']
@@ -73,7 +75,7 @@ def distance(fires, weather):
     
     return s
 
-## returns the best value you can find for 'avg_tmax' for one city from the list of all the weather stations (returns the closest distance?)
+## returns the best value you can find for 'avg_tmax' and 'precp_sum' for one city from the list of all the weather stations (returns the closest distance?)
 def best_weather (city, stations):
     distances = distance(city, stations)
 
@@ -84,16 +86,15 @@ def best_weather (city, stations):
     return tmax, precp
 
 def main():
-    
+    # all from one directory
     input_directory = pathlib.Path(sys.argv[1])
-    # output_directory = pathlib.Path(sys.argv[2])
     
+    ## read all the files needing processing
     wildfires = pd.read_csv(input_directory / 'CANADA_WILDFIRES.csv', sep=',', header=0, index_col = None, parse_dates=['REP_DATE'])
     weather = pd.read_parquet(input_directory / 'weather-sub/weather.parquet') ## for some reason doesn't print all the numbers 
     fire_nums = pd.read_csv(input_directory / 'Total_Wildfires_Monthly.csv', sep='\t', skiprows=1, header=0, encoding='utf-16')  
     fire_causes = pd.read_csv(input_directory / 'Wildfire_Causes.csv', sep='\t', skiprows=1, header=0, encoding='utf-16')  
-    print(wildfires)
-    # return
+
       
     ## WILDFIRES 
     ## clean the canada_wildfire csv - get month and year - combine based on that 
@@ -103,12 +104,13 @@ def main():
     wildfires['year'] = wildfires['REP_DATE'].dt.year
     wildfires['month'] = wildfires['REP_DATE'].dt.month
     
+    ## starting at 1990 - 2025 (smallest sequence all files have)
     wildfires = wildfires[(wildfires['year'] >= 1990) & (wildfires['year'] <= 2025)]
     wildfires['year'] = wildfires['year'].astype(int)
     wildfires['month'] = wildfires['month'].astype(int)
     
+    ## drop unneeded columns - FID was just the row number 
     wildfires = wildfires.drop(['FID', 'REP_DATE', 'PROTZONE'], axis=1)
-    
     
     wildfires = wildfires.astype({'LATITUDE': 'float', 'LONGITUDE': 'float', 'SIZE_HA': 'float'})
     
@@ -117,6 +119,7 @@ def main():
     
     wildfires = wildfires.drop(['LATITUDE', 'LONGITUDE'], axis=1)
     
+    ## rename parks to be part of a province since most files have province locations
     parks_map = {
         'BC': 'BC',
         'AB': 'AB',
@@ -178,13 +181,14 @@ def main():
     
     wildfires['prov'] = wildfires['prov'].map(parks_map)
     
-    print(wildfires)
+    # print(wildfires)
     
     ## FIRE NUMS
     ## change the years to be ints and not floats
     ## jurisdiction to be the short form 
-    ## months to be numbered???
+    ## months to be numbered
     
+    ## map provinces to be written in short form and months to be by number 
     prov_map = {
         'British Columbia': 'BC',
         'Alberta': 'AB',
@@ -218,6 +222,7 @@ def main():
     fire_nums = fire_nums.rename(columns={'Jurisdiction': 'prov'})
     fire_nums = fire_nums.rename(columns={'Month': 'month'})
 
+    # drop unneeded data and map necessary columns 
     fire_nums = fire_nums.drop(['Data Qualifier'], axis=1)
     fire_nums['prov'] = fire_nums['prov'].map(prov_map)
     fire_nums['month'] = fire_nums['month'].map(month_map)
@@ -228,9 +233,10 @@ def main():
     
     # print(fire_nums)
     
+    ## melt so we have a column for year 
     fire_nums = pd.melt(fire_nums, id_vars=['prov', 'month', 'lat', 'long'], var_name='year', value_name='fire_num')
     
-    print(fire_nums)
+    # print(fire_nums)
     
     
     
@@ -238,6 +244,7 @@ def main():
     ## change the years to be ints and not floats
     ## jurisdiction to be the short form
     
+    ## change the cause to be in short form 
     cause_map = {
         'Human activity' : 'H',
         'Lightning' : 'L',
@@ -248,34 +255,35 @@ def main():
     }
     
     fire_causes = fire_causes.rename(columns={'Jurisdiction': 'prov'})
+    
+    # drop unneeded data and map necessary columns 
     fire_causes = fire_causes.drop(['Data Qualifier'], axis=1)
     fire_causes['prov'] = fire_causes['prov'].map(prov_map)
     fire_causes['Cause'] = fire_causes['Cause'].map(cause_map)
     fire_causes = prov_location(fire_causes)
     fire_causes = fire_causes.fillna(0)
     
+    ## melt so we have a column for year 
     fire_causes = pd.melt(fire_causes, id_vars=['prov', 'Cause', 'lat', 'long'], var_name='year', value_name='fire_num')
 
-    print(fire_causes)
-    print (weather)
-    
+    # print(fire_causes)
+    # print (weather)
     
     ## divide by 10 since that is what GHCN distributes
     weather = weather.dropna(subset=['tmax_avg', 'precp_sum'])
     weather['tmax_avg'] = weather['tmax_avg'] / 10
     
     
-    
     ## https://stackoverflow.com/questions/33204763/how-to-pass-multiple-arguments-to-the-apply-function
-    # wildfires[['t_max', 'precp']]
     wildfires['stuff'] = wildfires.apply(lambda fire : best_weather(fire, weather), axis = 1)
     wildfires['t_max'] = wildfires['stuff'].apply(lambda pair: pair[0])
     wildfires['precp'] = wildfires['stuff'].apply(lambda pair: pair[1])
     
     wildfires = wildfires.drop(['stuff'], axis=1)
     
-    print(wildfires) 
+    # print(wildfires) 
     
+    ## returns a file of joined data for wildfire_analysis.py
     wildfires.to_csv('out.csv', index=False)
     
     
